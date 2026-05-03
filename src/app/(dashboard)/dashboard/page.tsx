@@ -52,53 +52,73 @@ export default async function DashboardHomePage({
   const bookings = bookingsData ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-16">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Overzicht</h1>
-        <p className="text-muted-foreground">
+    <div className="content-layer mx-auto flex w-full max-w-3xl flex-col gap-10 px-8 py-16 md:py-24">
+      <header className="space-y-5 md:text-left">
+        <div className="mb-2 flex items-center justify-center gap-4 md:justify-start">
+          <div className="bg-outline/25 hidden h-px w-12 md:block" />
+          <span className="font-label text-outline text-xs font-bold tracking-[0.25em] uppercase">
+            Jouw account
+          </span>
+        </div>
+        <h1 className="font-headline text-japandi-charcoal text-center text-4xl font-light md:text-left md:text-5xl">
+          Overzicht
+        </h1>
+        <p className="font-body text-on-surface-variant text-center text-lg leading-relaxed font-light md:text-left">
           Welkom {user.email ?? "gebruiker"}.
           {canTeach
             ? " Je hebt toegang tot workshopbeheer."
             : " Je account is standaard een gast-account (deelnemer)."}
         </p>
-      </div>
+      </header>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">Rol: {role}</Badge>
+        <Badge
+          variant="outline"
+          className="font-label border-outline-variant/40 text-on-surface-variant rounded-none text-[10px] tracking-widest uppercase"
+        >
+          Rol: {role}
+        </Badge>
       </div>
 
       {params.teacher === "required" && !canTeach && (
-        <p className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm">
+        <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
           Workshopbeheer is alleen voor docenten. Vraag de platformbeheerder om je uit te nodigen als
           teacher.
         </p>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Mijn inschrijvingen</CardTitle>
-          <CardDescription>
+      <Card className="border-outline-variant/25 rounded-none bg-white/95 shadow-none ring-0">
+        <CardHeader className="rounded-none">
+          <CardTitle className="font-headline text-japandi-charcoal text-xl font-light">
+            Mijn inschrijvingen
+          </CardTitle>
+          <CardDescription className="font-body text-on-surface-variant text-base font-light">
             Je actieve en geannuleerde boekingen per cursusdatum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {bookings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="font-body text-on-surface-variant text-sm">
               Nog geen inschrijvingen gevonden.
             </p>
           ) : (
             bookings.map((booking) => (
               <div
                 key={booking.id}
-                className="rounded-2xl border border-border bg-background px-4 py-3"
+                className="border-outline-variant/30 bg-japandi-cream/50 rounded-none border px-4 py-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">
+                  <p className="font-body text-on-surface font-medium">
                     {booking.workshop_sessions?.workshops?.title ?? "Workshop"}
                   </p>
-                  <Badge variant="outline">{booking.status}</Badge>
+                  <Badge
+                    variant="outline"
+                    className="font-label border-outline-variant/40 rounded-none text-[10px] tracking-widest uppercase"
+                  >
+                    {booking.status}
+                  </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="font-body text-on-surface-variant mt-1 text-sm">
                   {booking.workshop_sessions?.starts_at
                     ? new Date(booking.workshop_sessions.starts_at).toLocaleString("nl-NL")
                     : "Datum volgt"}
@@ -106,13 +126,13 @@ export default async function DashboardHomePage({
                     ? ` - ${booking.workshop_sessions.location}`
                     : ""}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="font-body text-on-surface-variant mt-1 text-sm">
                   Aantal deelnemers: {booking.participant_count}
                 </p>
                 {booking.workshop_sessions?.workshops?.slug && (
                   <Link
                     href={`/workshops/${booking.workshop_sessions.workshops.slug}`}
-                    className="mt-2 inline-block text-sm underline"
+                    className="font-label text-marketing-primary mt-2 inline-block text-[10px] font-bold tracking-widest uppercase underline-offset-4 hover:underline"
                   >
                     Bekijk workshop
                   </Link>
@@ -124,15 +144,26 @@ export default async function DashboardHomePage({
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <Button asChild>
+        <Button
+          asChild
+          className="rounded-none bg-japandi-blue font-label text-[10px] tracking-widest text-white uppercase hover:bg-japandi-blue/90"
+        >
           <Link href="/workshops">Workshops ontdekken</Link>
         </Button>
         {canTeach && (
-          <Button variant="outline" asChild>
+          <Button
+            variant="outline"
+            asChild
+            className="border-japandi-charcoal/25 rounded-none font-label text-[10px] tracking-widest uppercase"
+          >
             <Link href="/dashboard/workshops/new">Nieuwe workshop</Link>
           </Button>
         )}
-        <Button variant="outline" asChild>
+        <Button
+          variant="outline"
+          asChild
+          className="border-japandi-charcoal/25 rounded-none font-label text-[10px] tracking-widest uppercase"
+        >
           <Link href="/">Home</Link>
         </Button>
       </div>

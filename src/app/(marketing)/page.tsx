@@ -4,8 +4,13 @@ import { HeroCarousel } from "@/components/marketing/hero-carousel";
 import { HomeWorkshopsSection } from "@/components/marketing/home-workshops-section";
 import { NewsletterSection } from "@/components/marketing/newsletter-section";
 import { HERO_SLIDES } from "@/lib/marketing/hero-slides";
-import { fetchMarketingWorkshops } from "@/lib/workshops/fetch-public-workshops";
+import {
+  fetchMarketingWorkshops,
+  workshopSessionCountsById,
+} from "@/lib/workshops/fetch-public-workshops";
+import { workshopQueryDevHint } from "@/lib/workshops/workshop-query-dev-hint";
 import { createClient } from "@/lib/supabase/server";
+import { unstable_noStore as noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +31,7 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ account?: string }>;
 }) {
+  noStore();
   const sp = await searchParams;
   const accountDeleted = sp.account === "deleted";
 
@@ -42,13 +48,7 @@ export default async function HomePage({
     : { data: [] as SessionCountRow[] };
 
   const sessions = sessionsData ?? [];
-  const sessionCountByWorkshop = new Map<string, number>();
-  sessions.forEach((row) => {
-    sessionCountByWorkshop.set(
-      row.workshop_id,
-      (sessionCountByWorkshop.get(row.workshop_id) ?? 0) + 1,
-    );
-  });
+  const sessionCountsByWorkshopId = workshopSessionCountsById(sessions);
 
   return (
     <>
@@ -63,10 +63,8 @@ export default async function HomePage({
       {isDev && queryError ? (
         <div className="content-layer relative z-[40] px-8 pt-28 pb-2">
           <p className="mx-auto max-w-3xl rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 font-mono text-xs text-destructive">
-            [dev] Workshops laden mislukt — {queryError.code ?? "?"}: {queryError.message}.
-            {queryError.code === "42703"
-              ? " Voer op Supabase → SQL: `alter table public.workshops add column if not exists image_path text;` (zie supabase/migrations/)."
-              : " Check RLS `workshops_public_read`, env-keys en API-logs."}
+            [dev] Workshops laden mislukt — {queryError.code ?? "netwerk"}: {queryError.message}.
+            {workshopQueryDevHint(queryError)}
           </p>
         </div>
       ) : null}
@@ -116,7 +114,7 @@ export default async function HomePage({
 
       <HomeWorkshopsSection
         workshops={workshops}
-        sessionCountByWorkshop={sessionCountByWorkshop}
+        sessionCountsByWorkshopId={sessionCountsByWorkshopId}
       />
 
       <section

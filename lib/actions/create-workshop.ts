@@ -6,7 +6,15 @@ import { z } from "zod";
 
 import { requireApprovedTeacher } from "@/lib/auth/require-user";
 import { createClient } from "@/lib/supabase/server";
+import { getImageDimensionsFromBuffer } from "@/lib/workshops/image-dimensions";
 import { slugifyTitle } from "@/lib/workshops/slug";
+import {
+  WORKSHOP_IMAGE_BUCKET,
+  WORKSHOP_IMAGE_MAX_BYTES,
+  WORKSHOP_IMAGE_PIXEL_SIZE,
+  workshopImageExtensionFromMime,
+  workshopImageFilenameAllowed,
+} from "@/lib/workshops/workshop-image-rules";
 
 const sessionSchema = z.object({
   starts_at: z.string().min(1, "Kies datum en tijd"),
@@ -25,16 +33,6 @@ const payloadSchema = z.object({
   default_price_eur: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   sessions: z.array(sessionSchema).min(1, "Voeg minstens één datum toe"),
 });
-
-const WORKSHOP_IMAGE_BUCKET = "workshop-images";
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
-function extensionFromMimeType(mimeType: string): string | null {
-  if (mimeType === "image/png") return "png";
-  if (mimeType === "image/jpeg") return "jpg";
-  if (mimeType === "image/webp") return "webp";
-  return null;
-}
 
 async function ensureUniqueSlug(base: string): Promise<string> {
   const supabase = await createClient();
@@ -95,12 +93,29 @@ export async function createWorkshopWithSessions(
   let imagePath: string | null = null;
 
   if (imageInput instanceof File && imageInput.size > 0) {
-    if (imageInput.size > MAX_IMAGE_BYTES) {
+    if (!workshopImageFilenameAllowed(imageInput.name)) {
+      return {
+        error:
+          "Alleen PNG, JPG/JPEG of WEBP zijn toegestaan (controleer de bestandsnaam en extensie).",
+      };
+    }
+    if (imageInput.size > WORKSHOP_IMAGE_MAX_BYTES) {
       return { error: "Afbeelding is te groot (max 5 MB)." };
     }
-    const ext = extensionFromMimeType(imageInput.type);
+    const ext = workshopImageExtensionFromMime(imageInput.type);
     if (!ext) {
       return { error: "Gebruik PNG, JPG of WEBP voor de workshopafbeelding." };
+    }
+    const ab = await imageInput.arrayBuffer();
+    const dims = getImageDimensionsFromBuffer(ab);
+    if (
+      !dims ||
+      dims.width !== WORKSHOP_IMAGE_PIXEL_SIZE ||
+      dims.height !== WORKSHOP_IMAGE_PIXEL_SIZE
+    ) {
+      return {
+        error: `De afbeelding moet exact ${WORKSHOP_IMAGE_PIXEL_SIZE} × ${WORKSHOP_IMAGE_PIXEL_SIZE} pixels zijn.`,
+      };
     }
     imagePath = `${user.id}/${slug}.${ext}`;
     const { error: uploadErr } = await supabase.storage

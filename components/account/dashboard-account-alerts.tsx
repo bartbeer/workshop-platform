@@ -17,7 +17,7 @@ export function DashboardAccountAlerts() {
 
   if (account === "blocked_teaching") {
     return (
-      <p className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm">
+      <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
         Je account kan niet verwijderd worden zolang je nog toekomstige sessies geeft als teacher.
         Annuleer of verplaats die sessies eerst, of neem contact op met de organisatie.{" "}
         <Link href="/dashboard/workshops" className="font-medium underline">
@@ -29,7 +29,7 @@ export function DashboardAccountAlerts() {
 
   if (account === "blocked_future") {
     return (
-      <p className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm">
+      <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
         Je account kan niet verwijderd worden zolang je nog toekomstige workshopinschrijvingen hebt.
       </p>
     );
@@ -37,7 +37,7 @@ export function DashboardAccountAlerts() {
 
   if (account === "delete_failed") {
     return (
-      <p className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm">
+      <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
         Verwijderen is mislukt. Probeer opnieuw of neem contact op.
       </p>
     );
@@ -45,7 +45,7 @@ export function DashboardAccountAlerts() {
 
   if (account === "delete_config") {
     return (
-      <p className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm">
+      <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
         Verwijderen is tijdelijk niet beschikbaar door serverconfiguratie.
       </p>
     );

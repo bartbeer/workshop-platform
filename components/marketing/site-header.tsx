@@ -90,7 +90,7 @@ export async function SiteHeader() {
             </Button>
           )}
           <Link
-            href="/#newsletter"
+            href="/contact"
             className="font-label bg-japandi-blue inline-block rounded-none px-6 py-2 text-[10px] font-bold tracking-widest text-white uppercase transition-opacity hover:opacity-90"
           >
             Contact

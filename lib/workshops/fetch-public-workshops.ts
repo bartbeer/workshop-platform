@@ -14,6 +14,15 @@ export type WorkshopListQueryError = {
   code?: string;
 };
 
+/** Tellingen per workshop-id; gebruik dit i.p.v. `Map` zodat RSC-flight bij soft navigation blijft werken. */
+export function workshopSessionCountsById(rows: { workshop_id: string }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    out[row.workshop_id] = (out[row.workshop_id] ?? 0) + 1;
+  }
+  return out;
+}
+
 /**
  * Publieke workshoplijst (anon Supabase-client, onder RLS).
  * Bij fout: `console.warn` (geen `console.error`) zodat Next.js dev geen fullscreen overlay triggert;

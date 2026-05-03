@@ -3,9 +3,14 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchMarketingWorkshops } from "@/lib/workshops/fetch-public-workshops";
+import {
+  fetchMarketingWorkshops,
+  workshopSessionCountsById,
+} from "@/lib/workshops/fetch-public-workshops";
+import { workshopQueryDevHint } from "@/lib/workshops/workshop-query-dev-hint";
 import { createClient } from "@/lib/supabase/server";
 import { workshopImageSrc } from "@/lib/workshops/image-url";
+import { unstable_noStore as noStore } from "next/cache";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -44,6 +49,7 @@ type PageProps = {
 };
 
 export default async function WorkshopsPage({ searchParams }: PageProps) {
+  noStore();
   const sp = await searchParams;
   const supabase = await createClient();
   const { workshops, queryError } = await fetchMarketingWorkshops(supabase);
@@ -58,13 +64,7 @@ export default async function WorkshopsPage({ searchParams }: PageProps) {
     : { data: [] as SessionCountRow[] };
 
   const sessions = sessionsData ?? [];
-  const sessionCountByWorkshop = new Map<string, number>();
-  sessions.forEach((row) => {
-    sessionCountByWorkshop.set(
-      row.workshop_id,
-      (sessionCountByWorkshop.get(row.workshop_id) ?? 0) + 1,
-    );
-  });
+  const sessionCountsByWorkshopId = workshopSessionCountsById(sessions);
 
   const listNotice = workshopsListNotice(sp);
   return (
@@ -76,10 +76,8 @@ export default async function WorkshopsPage({ searchParams }: PageProps) {
       )}
       {isDev && queryError ? (
         <p className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
-          [dev] Workshops laden mislukt — {queryError.code ?? "?"}: {queryError.message}.
-          {queryError.code === "42703"
-            ? " SQL Editor: `alter table public.workshops add column if not exists image_path text;`"
-            : " Controleer RLS (`workshops_public_read`), NEXT_PUBLIC_SUPABASE_* en het juiste Supabase-project."}
+          [dev] Workshops laden mislukt — {queryError.code ?? "netwerk"}: {queryError.message}.
+          {workshopQueryDevHint(queryError)}
         </p>
       ) : null}
       <div>
@@ -94,7 +92,7 @@ export default async function WorkshopsPage({ searchParams }: PageProps) {
           <p className="text-sm text-muted-foreground">Nog geen workshops beschikbaar.</p>
         ) : (
           workshops.map((workshop) => {
-            const n = sessionCountByWorkshop.get(workshop.id) ?? 0;
+            const n = sessionCountsByWorkshopId[workshop.id] ?? 0;
             const hint =
               n === 0
                 ? "Nog geen datums gepland."

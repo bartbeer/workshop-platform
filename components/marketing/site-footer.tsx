@@ -73,7 +73,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link className="transition-colors hover:text-japandi-blue" href="/#newsletter">
+              <Link className="transition-colors hover:text-japandi-blue" href="/contact">
                 Contact
               </Link>
             </li>

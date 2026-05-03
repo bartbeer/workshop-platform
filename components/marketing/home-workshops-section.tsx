@@ -8,12 +8,13 @@ export type HomeWorkshopCard = MarketingWorkshopRow;
 
 type Props = {
   workshops: HomeWorkshopCard[];
-  sessionCountByWorkshop: Map<string, number>;
+  /** Aantal sessies per workshop-id (plat object — Flight-serialiseerbaar). */
+  sessionCountsByWorkshopId: Record<string, number>;
 };
 
 const HOME_GRID_LIMIT = 6;
 
-export function HomeWorkshopsSection({ workshops, sessionCountByWorkshop }: Props) {
+export function HomeWorkshopsSection({ workshops, sessionCountsByWorkshopId }: Props) {
   const preview = workshops.slice(0, HOME_GRID_LIMIT);
 
   return (
@@ -36,7 +37,7 @@ export function HomeWorkshopsSection({ workshops, sessionCountByWorkshop }: Prop
         ) : (
           <div className="grid grid-cols-1 gap-x-8 gap-y-16 md:grid-cols-2 lg:grid-cols-3">
             {preview.map((workshop) => {
-              const n = sessionCountByWorkshop.get(workshop.id) ?? 0;
+              const n = sessionCountsByWorkshopId[workshop.id] ?? 0;
               const excerpt =
                 workshop.description?.replace(/\s+/g, " ").trim().slice(0, 160) ??
                 "Ontdek deze workshop — alle datums en info op de detailpagina.";

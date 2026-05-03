@@ -20,7 +20,13 @@ export function DeleteAccountDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">Verwijder mijn account</Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="rounded-none font-label text-[10px] tracking-widest uppercase"
+        >
+          Verwijder mijn account
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -32,7 +38,7 @@ export function DeleteAccountDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-2xl border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <div className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface-variant rounded-none border px-3 py-2 text-sm">
           Workshops in het verleden zijn geen probleem — als deelnemer of als teacher. Bij succesvolle
           verwijdering word je meteen uitgelogd.
         </div>
