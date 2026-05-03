@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -46,6 +47,71 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Marketing / Japandi palette (explicit names; does not override shadcn primary) */
+  --font-headline: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-body: var(--font-raleway), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-raleway), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  --color-on-primary-container: #f6feff;
+  --color-outline: #70797a;
+  --color-on-secondary-container: #783925;
+  --color-on-primary-fixed-variant: #004f56;
+  --color-on-error-container: #93000a;
+  --color-on-primary-fixed: #001f23;
+  --color-primary-container: #0077b3;
+  --color-surface-variant: #eae1d6;
+  --color-marketing-secondary: #904b36;
+  --color-surface-bright: #fff8f2;
+  --color-marketing-primary: #005a87;
+  --color-on-secondary-fixed: #3a0b00;
+  --color-error: #ba1a1a;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-tertiary: #ffffff;
+  --color-marketing-background: #fff8f2;
+  --color-surface-dim: #fdf8e6;
+  --color-on-error: #ffffff;
+  --color-surface-container-high: #f9f4e3;
+  --color-surface-container-highest: #f4f0dd;
+  --color-primary-fixed: #afedf6;
+  --color-on-surface-variant: #3f484a;
+  --color-inverse-surface: #343028;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fda58b;
+  --color-tertiary-fixed-dim: #e8c16e;
+  --color-on-marketing-background: #1f1b14;
+  --color-tertiary-fixed: #ffdf9e;
+  --color-on-marketing-primary: #ffffff;
+  --color-inverse-primary: #93d1d9;
+  --color-marketing-tertiary: #74580b;
+  --color-on-surface: #1f1b14;
+  --color-secondary-fixed-dim: #ffb59f;
+  --color-secondary-fixed: #ffdbd0;
+  --color-surface-container-low: #fffdf5;
+  --color-on-tertiary-fixed: #261a00;
+  --color-on-secondary-fixed-variant: #723521;
+  --color-surface-tint: #27676f;
+  --color-error-container: #ffdad6;
+  --color-on-tertiary-fixed-variant: #5b4300;
+  --color-on-tertiary-container: #fffbff;
+  --color-surface: #fff8f2;
+  --color-surface-container: #fcf9eb;
+  --color-outline-variant: #bfc8c9;
+  --color-inverse-on-surface: #f9efe4;
+  --color-primary-fixed-dim: #93d1d9;
+  --color-tertiary-container: #8f7025;
+  --color-japandi-white: #fff8f2;
+  --color-japandi-cream: #fffdf2;
+  --color-japandi-yellow-light: #fffceb;
+  --color-japandi-teal: #4c8991;
+  --color-japandi-blue: #005a87;
+  --color-japandi-apricot: #e7af7f;
+  --color-japandi-charcoal: #3a474a;
+  --color-japandi-gold: #d0ab5a;
+  --color-japandi-taupe: #c4bcb1;
+  --color-japandi-terracotta: #b26750;
+  --color-japandi-sand: #f9f6e8;
 }
 
 :root {
@@ -126,5 +192,79 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1.5rem;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .vlek {
+    position: absolute;
+    z-index: 1;
+    filter: blur(80px);
+    border-radius: 50%;
+  }
+
+  .organic-shape {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.15;
+    mix-blend-mode: multiply;
+  }
+
+  .editorial-spacing {
+    letter-spacing: -0.02em;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .workshop-card img {
+    filter: grayscale(100%);
+    transition:
+      filter 600ms ease-in-out,
+      transform 600ms ease-in-out;
+  }
+
+  .workshop-card:hover img {
+    filter: grayscale(0%);
+    transform: scale(1.02);
+  }
+
+  .carousel-item {
+    display: none;
+  }
+
+  .carousel-item.active {
+    display: block;
+  }
+
+  .content-layer {
+    position: relative;
+    z-index: 10;
   }
 }

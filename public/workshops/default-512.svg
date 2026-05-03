@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Workshop placeholder image">
+  <rect width="512" height="512" fill="#e2e8f0" />
+  <rect x="48" y="48" width="416" height="416" rx="32" fill="#cbd5e1" />
+  <circle cx="180" cy="196" r="52" fill="#94a3b8" />
+  <path d="M104 388c24-70 82-118 152-118s128 48 152 118" fill="#94a3b8" />
+  <text x="256" y="454" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#334155">
+    512 x 512
+  </text>
+</svg>

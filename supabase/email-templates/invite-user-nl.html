@@ -1,0 +1,44 @@
+<!--
+  Kopiëren naar Supabase Dashboard → Authentication → Email Templates → Invite user
+
+  Onderwerp (subject) bijvoorbeeld:
+  Inschrijving bevestigd: {{ if index .Data "workshop_title" }}{{ index .Data "workshop_title" }}{{ else }}workshop{{ end }}
+
+  Zet ook je Site URL + Redirect URL allow list:
+  - {{ .SiteURL }} en redirect naar je app (bv. http://localhost:3000/auth/callback)
+-->
+
+<h2>Gefeliciteerd, je bent ingeschreven!</h2>
+
+{{ if index .Data "workshop_title" }}
+<p>Je inschrijving geldt voor de workshop <strong>{{ index .Data "workshop_title" }}</strong>.</p>
+{{ else }}
+<p>Je inschrijving voor de workshop is ontvangen.</p>
+{{ end }}
+
+{{ if index .Data "session_datetime_nl" }}
+<p><strong>Datum &amp; tijd:</strong> {{ index .Data "session_datetime_nl" }}</p>
+{{ end }}
+
+{{ if index .Data "session_location" }}
+  {{ $loc := index .Data "session_location" }}
+  {{ if ne $loc "" }}
+<p><strong>Locatie:</strong> {{ $loc }}</p>
+  {{ end }}
+{{ end }}
+
+{{ if index .Data "participant_count" }}
+<p><strong>Aantal deelnemers:</strong> {{ index .Data "participant_count" }}</p>
+{{ end }}
+
+<p>
+  Gelieve nog je account te bevestigen via onderstaande link. Daarna kun je op de website je inschrijvingen bekijken
+  en belangrijke updates over je workshop(s) volgen.
+</p>
+
+<p><a href="{{ .ConfirmationURL }}">Account bevestigen en verdergaan</a></p>
+
+<p style="font-size: 12px; color: #555;">
+  Werkt de knop niet? Kopieer deze link in je browser:<br />
+  {{ .ConfirmationURL }}
+</p>
