@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { DashboardAccountAlerts } from "@/components/account/dashboard-account-alerts";
 import { DeleteAccountDialog } from "@/components/account/delete-account-dialog";
+import type { ProfileRole } from "@/lib/auth/profile-role";
 
 function dashboardNavLinkClass(active: boolean) {
   return active
@@ -15,21 +16,13 @@ function dashboardNavLinkClass(active: boolean) {
 
 function navLinkActive(href: string, pathname: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard";
-  if (href === "/dashboard/workshops/new") {
-    return pathname === "/dashboard/workshops/new" || pathname.startsWith("/dashboard/workshops/new/");
-  }
-  if (href === "/dashboard/workshops") {
-    return (
-      pathname === "/dashboard/workshops" ||
-      (pathname.startsWith("/dashboard/workshops/") &&
-        !pathname.startsWith("/dashboard/workshops/new"))
-    );
-  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DashboardSubNav({ canTeach }: { canTeach: boolean }) {
+export function DashboardSubNav({ role }: { role: ProfileRole }) {
   const pathname = usePathname();
+  const isTeacher = role === "teacher" || role === "owner";
+  const isParticipant = role === "participant";
 
   return (
     <div className="border-outline-variant/10 bg-white/90 backdrop-blur-md border-b">
@@ -39,21 +32,29 @@ export function DashboardSubNav({ canTeach }: { canTeach: boolean }) {
             <Link href="/dashboard" className={dashboardNavLinkClass(navLinkActive("/dashboard", pathname))}>
               Overzicht
             </Link>
-            {canTeach ? (
-              <>
-                <Link
-                  href="/dashboard/workshops"
-                  className={dashboardNavLinkClass(navLinkActive("/dashboard/workshops", pathname))}
-                >
-                  Mijn workshops
-                </Link>
-                <Link
-                  href="/dashboard/workshops/new"
-                  className={dashboardNavLinkClass(navLinkActive("/dashboard/workshops/new", pathname))}
-                >
-                  Nieuwe workshop
-                </Link>
-              </>
+            {isTeacher ? (
+              <Link
+                href="/dashboard/sessions"
+                className={dashboardNavLinkClass(navLinkActive("/dashboard/sessions", pathname))}
+              >
+                Mijn sessies
+              </Link>
+            ) : null}
+            {role === "owner" ? (
+              <Link
+                href="/admin/workshops"
+                className={dashboardNavLinkClass(navLinkActive("/admin/workshops", pathname))}
+              >
+                Catalogus beheer
+              </Link>
+            ) : null}
+            {isParticipant ? (
+              <Link
+                href="/dashboard/become-teacher"
+                className={dashboardNavLinkClass(navLinkActive("/dashboard/become-teacher", pathname))}
+              >
+                Docent worden
+              </Link>
             ) : null}
           </nav>
           <DeleteAccountDialog />

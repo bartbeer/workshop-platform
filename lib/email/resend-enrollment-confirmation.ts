@@ -1,4 +1,5 @@
 import { getSiteUrl } from "@/lib/site-url";
+import { escapeHtml } from "@/lib/email/escape-html";
 import { formatSessionDateTimeNl, type WorkshopEmailContext } from "@/lib/workshops/workshop-email-context";
 
 type Args = {
@@ -59,12 +60,4 @@ export async function sendExistingUserEnrollmentConfirmationEmail(args: Args): P
     const text = await res.text();
     console.error("[resend] enrollment confirmation failed", res.status, text);
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

@@ -37,7 +37,9 @@ export default async function DashboardHomePage({
   const user = await requireUser("/dashboard");
   const role = await getProfileRole(user.id);
   const params = await searchParams;
-  const canTeach = role === "teacher" || role === "owner";
+  const isTeacher = role === "teacher" || role === "owner";
+  const isOwner = role === "owner";
+  const isParticipant = role === "participant";
 
   const supabase = await createClient();
   const { data: bookingsData } = await supabase
@@ -65,9 +67,9 @@ export default async function DashboardHomePage({
         </h1>
         <p className="font-body text-on-surface-variant text-center text-lg leading-relaxed font-light md:text-left">
           Welkom {user.email ?? "gebruiker"}.
-          {canTeach
-            ? " Je hebt toegang tot workshopbeheer."
-            : " Je account is standaard een gast-account (deelnemer)."}
+          {isTeacher
+            ? " Je bent docent op het platform."
+            : " Je bent ingeschreven als deelnemer."}
         </p>
       </header>
 
@@ -80,10 +82,10 @@ export default async function DashboardHomePage({
         </Badge>
       </div>
 
-      {params.teacher === "required" && !canTeach && (
+      {params.teacher === "required" && !isTeacher && (
         <p className="font-body border-outline-variant/40 bg-japandi-cream/80 text-on-surface rounded-none border px-3 py-2 text-sm">
-          Workshopbeheer is alleen voor docenten. Vraag de platformbeheerder om je uit te nodigen als
-          teacher.
+          Workshopbeheer is voorbehouden aan de platformbeheerder. Wil je docent worden? Dien een
+          aanvraag in of vraag een uitnodiging aan.
         </p>
       )}
 
@@ -150,13 +152,31 @@ export default async function DashboardHomePage({
         >
           <Link href="/workshops">Workshops ontdekken</Link>
         </Button>
-        {canTeach && (
+        {isTeacher && (
           <Button
             variant="outline"
             asChild
             className="border-japandi-charcoal/25 rounded-none font-label text-[10px] tracking-widest uppercase"
           >
-            <Link href="/dashboard/workshops/new">Nieuwe workshop</Link>
+            <Link href="/dashboard/sessions">Mijn sessies</Link>
+          </Button>
+        )}
+        {isOwner && (
+          <Button
+            variant="outline"
+            asChild
+            className="border-japandi-charcoal/25 rounded-none font-label text-[10px] tracking-widest uppercase"
+          >
+            <Link href="/admin/workshops">Catalogus beheer</Link>
+          </Button>
+        )}
+        {isParticipant && (
+          <Button
+            variant="outline"
+            asChild
+            className="border-japandi-charcoal/25 rounded-none font-label text-[10px] tracking-widest uppercase"
+          >
+            <Link href="/dashboard/become-teacher">Docent worden</Link>
           </Button>
         )}
         <Button

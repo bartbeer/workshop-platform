@@ -1,12 +1,16 @@
 import { redirect } from "next/navigation";
 
+import {
+  type ProfileRole,
+  resolveProfileRole,
+  type TeacherRequestStatus,
+} from "@/lib/auth/profile-role";
 import { createClient } from "@/lib/supabase/server";
 
-export type ProfileRole = "guest" | "teacher" | "owner";
-export type TeacherRequestStatus = "none" | "pending" | "approved" | "rejected";
+export type { ProfileRole, TeacherRequestStatus };
 
 type AppProfile = {
-  role: ProfileRole;
+  role: string;
 };
 
 /**
@@ -33,7 +37,7 @@ export async function getTeacherRequestStatus(userId: string): Promise<TeacherRe
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ status: TeacherRequestStatus }>();
+    .maybeSingle<{ status: Exclude<TeacherRequestStatus, "none"> }>();
 
   if (error || !data?.status) return "none";
   return data.status;
@@ -47,16 +51,16 @@ export async function getProfileRole(userId: string): Promise<ProfileRole> {
     .eq("id", userId)
     .maybeSingle<AppProfile>();
 
-  if (!error && data?.role === "owner") return "owner";
-  if (!error && data?.role === "teacher") return "teacher";
+  const teacherApplicationStatus = await getTeacherRequestStatus(userId);
 
-  const latest = await getTeacherRequestStatus(userId);
-  if (latest === "approved") {
-    return "teacher";
+  if (error) {
+    return resolveProfileRole({ storedRole: null, teacherApplicationStatus });
   }
 
-  if (error || !data?.role) return "guest";
-  return "guest";
+  return resolveProfileRole({
+    storedRole: data?.role,
+    teacherApplicationStatus,
+  });
 }
 
 export async function requireOwner(loginRedirectTo = "/admin") {

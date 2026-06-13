@@ -12,15 +12,32 @@ import {
   createWorkshopWithSessions,
 } from "@/lib/actions/create-workshop";
 import {
+  type UpdateWorkshopState,
+  updateWorkshopWithSessions,
+} from "@/lib/actions/update-workshop";
+import {
   WORKSHOP_IMAGE_ACCEPT_ATTR,
   WORKSHOP_IMAGE_MAX_BYTES,
   WORKSHOP_IMAGE_PIXEL_SIZE,
   workshopImageFilenameAllowed,
   workshopImageMimeAllowed,
 } from "@/lib/workshops/workshop-image-rules";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export type WorkshopTeacherOption = {
+  id: string;
+  label: string;
+};
 
 type SessionDraft = {
   id: string;
+  dbId?: string;
   starts_at: string;
   location: string;
   max_participants: number;
@@ -28,9 +45,29 @@ type SessionDraft = {
   session_description: string;
   duration_hours: string;
   extra_info: string;
+  teacher_user_id: string;
 };
 
-function newSession(): SessionDraft {
+export type WorkshopFormInitial = {
+  workshopId?: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+  default_price_eur?: string;
+  sessions?: SessionDraft[];
+};
+
+type WorkshopFormProps = {
+  teacherOptions: WorkshopTeacherOption[];
+  action?: (
+    prev: CreateWorkshopState | UpdateWorkshopState | undefined,
+    formData: FormData,
+  ) => Promise<CreateWorkshopState | UpdateWorkshopState>;
+  initial?: WorkshopFormInitial;
+  submitLabel?: string;
+};
+
+function newSession(teacherOptions: WorkshopTeacherOption[]): SessionDraft {
   return {
     id: crypto.randomUUID(),
     starts_at: "",
@@ -40,6 +77,7 @@ function newSession(): SessionDraft {
     session_description: "",
     duration_hours: "",
     extra_info: "",
+    teacher_user_id: teacherOptions[0]?.id ?? "",
   };
 }
 
@@ -71,13 +109,20 @@ function SectionTitle({ label }: { label: string }) {
   );
 }
 
-export function WorkshopCreateForm() {
+export function WorkshopCreateForm({
+  teacherOptions,
+  action = createWorkshopWithSessions,
+  initial,
+  submitLabel = "Workshop publiceren",
+}: WorkshopFormProps) {
   const [state, formAction, pending] = useActionState<
-    CreateWorkshopState | undefined,
+    CreateWorkshopState | UpdateWorkshopState | undefined,
     FormData
-  >(createWorkshopWithSessions, undefined);
+  >(action, undefined);
 
-  const [sessions, setSessions] = useState<SessionDraft[]>(() => [newSession()]);
+  const [sessions, setSessions] = useState<SessionDraft[]>(() =>
+    initial?.sessions?.length ? initial.sessions : [newSession(teacherOptions)],
+  );
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFieldError, setImageFieldError] = useState<string | null>(null);
   const imageObjectUrlRef = useRef<string | null>(null);
@@ -115,11 +160,13 @@ export function WorkshopCreateForm() {
           session_description?: string;
           extra_info?: string;
           duration_hours?: number;
+          teacher_user_id: string;
         } = {
           starts_at: s.starts_at,
           location: s.location.trim() || undefined,
           max_participants: s.max_participants,
           price_eur,
+          teacher_user_id: s.teacher_user_id,
         };
         const sd = s.session_description.trim();
         if (sd) base.session_description = sd;
@@ -190,6 +237,14 @@ export function WorkshopCreateForm() {
       onSubmit={() => setImageFieldError(null)}
     >
       <input type="hidden" name="sessions_json" value={JSON.stringify(sessionsPayload)} />
+      <input
+        type="hidden"
+        name="session_ids_json"
+        value={JSON.stringify(sessions.map((s) => s.dbId ?? ""))}
+      />
+      {initial?.workshopId ? (
+        <input type="hidden" name="workshop_id" value={initial.workshopId} />
+      ) : null}
 
       {state?.error && (
         <p className="border-error/40 bg-error-container/60 font-body text-error rounded-none border px-4 py-3 text-sm">
@@ -208,6 +263,7 @@ export function WorkshopCreateForm() {
               id="title"
               name="title"
               required
+              defaultValue={initial?.title}
               placeholder="Bijv. Keramiek voor beginners"
               className={fieldClass}
             />
@@ -219,6 +275,7 @@ export function WorkshopCreateForm() {
             <Input
               id="slug"
               name="slug"
+              defaultValue={initial?.slug}
               placeholder="Laat leeg om automatisch te genereren"
               className={fieldClass}
             />
@@ -231,6 +288,7 @@ export function WorkshopCreateForm() {
               id="description"
               name="description"
               rows={4}
+              defaultValue={initial?.description}
               placeholder="Wat leren deelnemers?"
               className={fieldClass}
             />
@@ -248,6 +306,7 @@ export function WorkshopCreateForm() {
               type="number"
               min={0}
               step="0.01"
+              defaultValue={initial?.default_price_eur}
               placeholder="Bijv. 45"
               className={fieldClass}
             />
@@ -310,7 +369,7 @@ export function WorkshopCreateForm() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setSessions((s) => [...s, newSession()])}
+            onClick={() => setSessions((s) => [...s, newSession(teacherOptions)])}
             className="border-japandi-blue/35 font-label shrink-0 rounded-none text-[10px] tracking-widest uppercase"
           >
             Voeg een datum toe
@@ -318,7 +377,7 @@ export function WorkshopCreateForm() {
         </div>
 
         <p className="font-body text-on-surface-variant mb-6 text-sm font-light">
-          Kies zelf welke dagen en uren je geeft — geen vaste tussenpozen.
+          Kies datums, locaties en wijs per sessie een docent toe.
         </p>
 
         <div className="flex flex-col gap-5">
@@ -412,6 +471,32 @@ export function WorkshopCreateForm() {
                     }
                     className={fieldClass}
                   />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="font-label text-japandi-charcoal text-[10px] tracking-widest uppercase">
+                    Docent
+                  </Label>
+                  <Select
+                    value={session.teacher_user_id}
+                    onValueChange={(value) =>
+                      setSessions((rows) =>
+                        rows.map((r) =>
+                          r.id === session.id ? { ...r, teacher_user_id: value } : r,
+                        ),
+                      )
+                    }
+                  >
+                    <SelectTrigger className={fieldClass}>
+                      <SelectValue placeholder="Kies docent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teacherOptions.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label
@@ -515,7 +600,7 @@ export function WorkshopCreateForm() {
           disabled={pending || sessionsPayload.length === 0}
           className="font-label bg-japandi-blue hover:bg-japandi-blue/90 h-auto rounded-none px-8 py-3 text-[10px] font-bold tracking-[0.2em] text-white uppercase shadow-lg disabled:opacity-40"
         >
-          {pending ? "Opslaan…" : "Workshop publiceren"}
+          {pending ? "Opslaan…" : submitLabel}
         </Button>
         {sessionsPayload.length === 0 && (
           <p className="font-body text-on-surface-variant text-sm font-light">

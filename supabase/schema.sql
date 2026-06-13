@@ -2,7 +2,7 @@
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'guest' check (role in ('guest', 'teacher', 'owner')),
+  role text not null default 'participant' check (role in ('participant', 'teacher', 'owner')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -117,17 +117,32 @@ create table if not exists public.workshop_sessions (
   session_description text,
   duration_minutes integer,
   extra_info text,
+  teacher_user_id uuid references auth.users(id),
+  status text not null default 'scheduled' check (status in ('scheduled', 'cancelled')),
   created_at timestamptz not null default now(),
   constraint workshop_sessions_duration_check
     check (duration_minutes is null or duration_minutes > 0)
 );
 create index if not exists workshop_sessions_workshop_idx
   on public.workshop_sessions(workshop_id);
+create index if not exists workshop_sessions_teacher_idx
+  on public.workshop_sessions(teacher_user_id);
+create index if not exists workshop_sessions_status_idx
+  on public.workshop_sessions(status);
 
 -- Bestaande databases: kolommen toevoegen zonder de tabel te droppen
 alter table public.workshop_sessions add column if not exists session_description text;
 alter table public.workshop_sessions add column if not exists duration_minutes integer;
-alter table public.workshop_sessions add column if not exists extra_info text;
+alter table public.workshop_sessions add column if not exists teacher_user_id uuid references auth.users(id);
+alter table public.workshop_sessions add column if not exists status text not null default 'scheduled';
+do $$
+begin
+  alter table public.workshop_sessions
+    add constraint workshop_sessions_status_check
+    check (status in ('scheduled', 'cancelled'));
+exception
+  when duplicate_object then null;
+end $$;
 do $$
 begin
   alter table public.workshop_sessions
@@ -175,18 +190,18 @@ create policy "workshops_public_read"
   using (true);
 
 drop policy if exists "workshops_teacher_write" on public.workshops;
-create policy "workshops_teacher_write"
+
+drop policy if exists "workshops_owner_write" on public.workshops;
+create policy "workshops_owner_write"
   on public.workshops for all
   using (
-    auth.uid() = teacher_user_id
-    or exists (
+    exists (
       select 1 from public.profiles p
       where p.id = auth.uid() and p.role = 'owner'
     )
   )
   with check (
-    auth.uid() = teacher_user_id
-    or exists (
+    exists (
       select 1 from public.profiles p
       where p.id = auth.uid() and p.role = 'owner'
     )
@@ -198,21 +213,25 @@ create policy "sessions_public_read"
   using (true);
 
 drop policy if exists "sessions_teacher_write" on public.workshop_sessions;
-create policy "sessions_teacher_write"
+drop policy if exists "sessions_owner_write" on public.workshop_sessions;
+create policy "sessions_owner_write"
   on public.workshop_sessions for all
   using (
     exists (
-      select 1 from public.workshops w
-      where w.id = workshop_id
-        and (
-          w.teacher_user_id = auth.uid()
-          or exists (
-            select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'owner'
-          )
-        )
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'owner'
     )
   )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'owner'
+    )
+  );
+
+drop policy if exists "sessions_workshop_teacher_insert" on public.workshop_sessions;
+create policy "sessions_workshop_teacher_insert"
+  on public.workshop_sessions for insert
   with check (
     exists (
       select 1 from public.workshops w
@@ -261,6 +280,58 @@ as $$
 $$;
 
 grant execute on function public.confirmed_participants_by_sessions(uuid[]) to anon, authenticated;
+
+create or replace function public.teacher_labels_by_user_ids(p_user_ids uuid[])
+returns table (user_id uuid, label text)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    u.id as user_id,
+    coalesce(
+      nullif(trim(u.raw_user_meta_data->>'full_name'), ''),
+      split_part(u.email, '@', 1)
+    ) as label
+  from auth.users u
+  where u.id = any(p_user_ids);
+$$;
+
+revoke all on function public.teacher_labels_by_user_ids(uuid[]) from public;
+grant execute on function public.teacher_labels_by_user_ids(uuid[]) to anon, authenticated;
+
+create or replace function public.booker_labels_by_user_ids(p_user_ids uuid[])
+returns table (user_id uuid, label text, email text)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    u.id as user_id,
+    coalesce(
+      nullif(trim(u.raw_user_meta_data->>'full_name'), ''),
+      split_part(u.email, '@', 1)
+    ) as label,
+    u.email::text as email
+  from auth.users u
+  where u.id = any(p_user_ids);
+$$;
+
+revoke all on function public.booker_labels_by_user_ids(uuid[]) from public;
+grant execute on function public.booker_labels_by_user_ids(uuid[]) to authenticated;
+
+drop policy if exists "bookings_teacher_read_assigned" on public.workshop_bookings;
+create policy "bookings_teacher_read_assigned"
+  on public.workshop_bookings for select
+  using (
+    exists (
+      select 1 from public.workshop_sessions s
+      where s.id = workshop_session_id
+        and s.teacher_user_id = auth.uid()
+    )
+  );
 
 -- Public workshop images in Supabase Storage
 insert into storage.buckets (id, name, public)

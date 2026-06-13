@@ -10,6 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { getStripe } from "@/lib/stripe/server";
 import { inviteNewGuestUser, lookupUserIdByEmail } from "@/lib/workshops/enrollment-user";
+import {
+  capacityBookingErrorParam,
+  sessionBookingBlockReason,
+} from "@/lib/workshops/session-booking-eligibility";
 import { assertSessionCapacity } from "@/lib/workshops/session-capacity";
 import { fetchWorkshopEmailContext } from "@/lib/workshops/workshop-email-context";
 
@@ -37,14 +41,20 @@ export async function subscribeToSession(formData: FormData) {
 
   const { data: session } = await supabase
     .from("workshop_sessions")
-    .select("id, max_participants, price_cents, workshop_id")
+    .select("id, max_participants, price_cents, workshop_id, status")
     .eq("id", sessionId)
     .maybeSingle<{
       id: string;
       max_participants: number;
       price_cents: number | null;
       workshop_id: string;
+      status: "scheduled" | "cancelled";
     }>();
+
+  const sessionBlock = sessionBookingBlockReason(session);
+  if (sessionBlock) {
+    redirect(`${safePath}?error=${capacityBookingErrorParam(sessionBlock)}`);
+  }
 
   if (!session) {
     redirect(`${safePath}?error=missing_session`);
@@ -81,7 +91,7 @@ export async function subscribeToSession(formData: FormData) {
 
     const cap = await assertSessionCapacity(supabase, sessionId, participantCount, user?.id ?? null);
     if (!cap.ok) {
-      redirect(`${safePath}?error=${cap.reason === "full" ? "full" : cap.reason === "missing_session" ? "missing_session" : "invalid"}`);
+      redirect(`${safePath}?error=${capacityBookingErrorParam(cap.reason)}`);
     }
 
     const origin = getSiteUrl();
@@ -120,7 +130,7 @@ export async function subscribeToSession(formData: FormData) {
   if (user) {
     const cap = await assertSessionCapacity(supabase, sessionId, participantCount, user.id);
     if (!cap.ok) {
-      redirect(`${safePath}?error=${cap.reason === "full" ? "full" : cap.reason === "missing_session" ? "missing_session" : "invalid"}`);
+      redirect(`${safePath}?error=${capacityBookingErrorParam(cap.reason)}`);
     }
 
     await supabase.from("workshop_bookings").upsert(
@@ -157,7 +167,7 @@ export async function subscribeToSession(formData: FormData) {
     if (!userId) {
       const capNew = await assertSessionCapacity(admin, sessionId, participantCount, null);
       if (!capNew.ok) {
-        redirect(`${safePath}?error=full`);
+        redirect(`${safePath}?error=${capacityBookingErrorParam(capNew.reason)}`);
       }
       try {
         userId = await inviteNewGuestUser(admin, guestEmail!, {
@@ -174,7 +184,7 @@ export async function subscribeToSession(formData: FormData) {
     } else {
       const capEx = await assertSessionCapacity(admin, sessionId, participantCount, userId);
       if (!capEx.ok) {
-        redirect(`${safePath}?error=full`);
+        redirect(`${safePath}?error=${capacityBookingErrorParam(capEx.reason)}`);
       }
     }
 

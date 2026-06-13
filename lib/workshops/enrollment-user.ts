@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { PARTICIPANT_PROFILE_ROLE } from "@/lib/auth/profile-role";
 import { getSiteUrl } from "@/lib/site-url";
 
 import { formatSessionDateTimeNl, type WorkshopEmailContext } from "./workshop-email-context";
@@ -42,7 +43,9 @@ export async function inviteNewGuestUser(
   if (error) throw error;
   if (!data.user?.id) throw new Error("inviteUserByEmail: geen user id");
 
-  await admin.from("profiles").upsert({ id: data.user.id, role: "guest" }, { onConflict: "id" });
+  await admin
+    .from("profiles")
+    .upsert({ id: data.user.id, role: PARTICIPANT_PROFILE_ROLE }, { onConflict: "id" });
 
   return data.user.id;
 }

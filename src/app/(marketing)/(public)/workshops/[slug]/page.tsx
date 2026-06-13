@@ -7,6 +7,7 @@ import { WorkshopSessionSubscribeForm } from "@/components/workshops/workshop-se
 import { createClient } from "@/lib/supabase/server";
 import { formatDurationNl } from "@/lib/workshops/format-duration";
 import { workshopImageSrc } from "@/lib/workshops/image-url";
+import { isSessionBookable, partitionSessionsByStatus } from "@/lib/workshops/session-public";
 
 /** Accentbeelden — zelfde sfeer als de homepage (`src/app/(marketing)/page.tsx`). */
 const GALLERY_ACCENT_A =
@@ -38,6 +39,13 @@ type SessionRow = {
   session_description: string | null;
   duration_minutes: number | null;
   extra_info: string | null;
+  teacher_user_id: string | null;
+  status: "scheduled" | "cancelled";
+};
+
+type TeacherLabelRow = {
+  user_id: string;
+  label: string;
 };
 
 type SeatCountRpcRow = {
@@ -78,6 +86,7 @@ function workshopQueryNotice(sp: Record<string, string | string[] | undefined>):
   if (err === "full") return "Deze sessie zit vol voor het gekozen aantal deelnemers.";
   if (err === "invalid") return "Ongeldige invoer. Pas het aantal deelnemers aan.";
   if (err === "missing_session") return "Deze sessie bestaat niet (meer).";
+  if (err === "session_cancelled") return "Deze sessie is geannuleerd en kan niet meer worden geboekt.";
   if (err === "server_config") return "Inschrijving zonder account vereist serverconfiguratie (service role).";
   if (err === "booking_failed") return "Inschrijven is mislukt. Probeer het opnieuw of neem contact op.";
 
@@ -186,14 +195,27 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
   const { data: sessionsData } = await supabase
     .from("workshop_sessions")
     .select(
-      "id,workshop_id,starts_at,location,max_participants,price_cents,session_description,duration_minutes,extra_info",
+      "id,workshop_id,starts_at,location,max_participants,price_cents,session_description,duration_minutes,extra_info,teacher_user_id,status",
     )
     .eq("workshop_id", workshop.id)
     .order("starts_at", { ascending: true })
     .returns<SessionRow[]>();
 
   const sessions = sessionsData ?? [];
+  const { bookable: bookableSessions, cancelled: cancelledSessions } =
+    partitionSessionsByStatus(sessions);
   const sessionIds = sessions.map((s) => s.id);
+
+  const teacherIds = [
+    ...new Set(sessions.map((s) => s.teacher_user_id).filter((id): id is string => Boolean(id))),
+  ];
+  const { data: teacherLabelRowsRaw } = teacherIds.length
+    ? await supabase.rpc("teacher_labels_by_user_ids", { p_user_ids: teacherIds })
+    : { data: [] as TeacherLabelRow[] };
+  const teacherLabelRows = (teacherLabelRowsRaw ?? []) as TeacherLabelRow[];
+  const teacherLabelByUserId = new Map(
+    teacherLabelRows.map((row) => [row.user_id, row.label] as const),
+  );
 
   const {
     data: { user },
@@ -236,15 +258,17 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
     null;
 
   const eyebrow =
-    sessions.length === 0
-      ? "Workshop"
-      : sessions.length === 1
+    bookableSessions.length === 0
+      ? cancelledSessions.length > 0
+        ? "Geen open sessies"
+        : "Workshop"
+      : bookableSessions.length === 1
         ? "Eén geplande datum"
-        : `${sessions.length} datums`;
+        : `${bookableSessions.length} datums`;
 
-  const whenSummary = summarizeWhenBlock(sessions);
-  const locationSummary = summarizeLocations(sessions);
-  const includedSummary = summarizeIncluded(sessions, workshop.description);
+  const whenSummary = summarizeWhenBlock(bookableSessions);
+  const locationSummary = summarizeLocations(bookableSessions);
+  const includedSummary = summarizeIncluded(bookableSessions, workshop.description);
 
   return (
     <div className="relative overflow-hidden pb-24">
@@ -361,6 +385,10 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
                   const free = Math.max(session.max_participants - confirmed, 0);
                   const myBooking = myBookingsBySession.get(session.id);
                   const isConfirmed = myBooking?.status === "confirmed";
+                  const sessionIsBookable = isSessionBookable(session.status);
+                  const teacherLabel = session.teacher_user_id
+                    ? teacherLabelByUserId.get(session.teacher_user_id)
+                    : null;
 
                   const durationLabel = formatDurationNl(session.duration_minutes);
                   const pricePerPersonCents = session.price_cents ?? workshop.price_cents;
@@ -376,7 +404,7 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
                   return (
                     <div
                       key={session.id}
-                      className={`font-body group hover:bg-surface-container-low -mx-4 rounded-lg px-4 py-8 transition-colors ${borderClass}`}
+                      className={`font-body group hover:bg-surface-container-low -mx-4 rounded-lg px-4 py-8 transition-colors ${borderClass} ${sessionIsBookable ? "" : "opacity-60"}`}
                     >
                       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
                         <span className="font-headline text-japandi-teal shrink-0 text-xl opacity-60">
@@ -393,10 +421,16 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
                               {session.location?.trim()
                                 ? ` · ${session.location.trim()}`
                                 : ""}
+                              {teacherLabel ? ` · Docent: ${teacherLabel}` : ""}
                             </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
+                            {!sessionIsBookable ? (
+                              <span className="font-label rounded-none border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] tracking-wide text-destructive uppercase">
+                                Geannuleerd
+                              </span>
+                            ) : null}
                             <span className="font-label border-outline-variant/40 rounded-none border bg-white/80 px-2 py-1 text-[10px] tracking-wide uppercase">
                               {priceLabel}
                             </span>
@@ -423,17 +457,23 @@ export default async function WorkshopDetailPage({ params, searchParams }: Props
                             </p>
                           ) : null}
 
-                          <WorkshopSessionSubscribeForm
-                            slug={workshop.slug}
-                            sessionId={session.id}
-                            pricePerPersonCents={pricePerPersonCents}
-                            defaultParticipantCount={
-                              isConfirmed && myBooking ? myBooking.participant_count : 1
-                            }
-                            disableSubmit={free === 0 && !isConfirmed}
-                            isConfirmed={isConfirmed}
-                            isLoggedIn={!!user}
-                          />
+                          {sessionIsBookable ? (
+                            <WorkshopSessionSubscribeForm
+                              slug={workshop.slug}
+                              sessionId={session.id}
+                              pricePerPersonCents={pricePerPersonCents}
+                              defaultParticipantCount={
+                                isConfirmed && myBooking ? myBooking.participant_count : 1
+                              }
+                              disableSubmit={free === 0 && !isConfirmed}
+                              isConfirmed={isConfirmed}
+                              isLoggedIn={!!user}
+                            />
+                          ) : (
+                            <p className="text-sm text-on-surface-variant">
+                              Inschrijven is niet meer mogelijk voor deze sessie.
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

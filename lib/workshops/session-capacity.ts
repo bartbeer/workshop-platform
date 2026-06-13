@@ -1,11 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { sessionBookingBlockReason, capacityBookingErrorParam } from "@/lib/workshops/session-booking-eligibility";
+import type { SessionStatus } from "@/lib/workshops/session-public";
+
 export type SeatCountRpcRow = {
   workshop_session_id: string;
   total_participants: number;
 };
 
-type SessionCapRow = { id: string; max_participants: number };
+type SessionCapRow = { id: string; max_participants: number; status: SessionStatus };
 
 /**
  * Zelfde capaciteitslogica als bij inschrijven: bevestigde deelnemers minus eigen huidige boeking + gewenst aantal.
@@ -15,16 +18,21 @@ export async function assertSessionCapacity(
   workshopSessionId: string,
   participantCount: number,
   forUserId: string | null,
-): Promise<{ ok: true } | { ok: false; reason: "missing_session" | "full" | "invalid" }> {
+): Promise<
+  { ok: true } | { ok: false; reason: "missing_session" | "cancelled" | "full" | "invalid" }
+> {
   if (!workshopSessionId || Number.isNaN(participantCount) || participantCount < 1 || participantCount > 20) {
     return { ok: false, reason: "invalid" };
   }
 
   const { data: session } = await supabase
     .from("workshop_sessions")
-    .select("id,max_participants")
+    .select("id,max_participants,status")
     .eq("id", workshopSessionId)
     .maybeSingle<SessionCapRow>();
+
+  const blockReason = sessionBookingBlockReason(session);
+  if (blockReason) return { ok: false, reason: blockReason };
 
   if (!session) return { ok: false, reason: "missing_session" };
 

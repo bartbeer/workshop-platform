@@ -14,10 +14,11 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-full flex-col">
       <header className="border-b border-border bg-background/80 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-4">
-          <nav className="text-sm font-medium">
-            <Link href="/admin" className="text-foreground">
-              Platformbeheer
+        <div className="mx-auto flex max-w-5xl items-center gap-6">
+          <nav className="flex gap-4 text-sm font-medium">
+            <Link href="/admin">Platformbeheer</Link>
+            <Link href="/admin/workshops" className="text-muted-foreground hover:text-foreground">
+              Workshops
             </Link>
           </nav>
         </div>

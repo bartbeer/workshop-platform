@@ -13,14 +13,13 @@ export default async function DashboardGroupLayout({
 }) {
   const user = await requireUser("/dashboard");
   const role = await getProfileRole(user.id);
-  const canTeach = role === "teacher" || role === "owner";
 
   return (
     <div className="font-body selection:bg-secondary-container/30 relative flex min-h-full flex-col overflow-x-hidden bg-japandi-white text-on-surface">
       <MarketingBackdrop />
       <SiteHeader />
       <main className="relative flex flex-1 flex-col pt-28">
-        <DashboardSubNav canTeach={canTeach} />
+        <DashboardSubNav role={role} />
         <div className="relative flex flex-1 flex-col">{children}</div>
       </main>
       <SiteFooter />

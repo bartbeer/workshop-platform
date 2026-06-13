@@ -18,10 +18,10 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- 1) Profielen als guest voor klanten (bestaande rol wordt niet overschreven)
+-- 1) Profielen als participant voor klanten (bestaande rol wordt niet overschreven)
 -- -----------------------------------------------------------------------------
 insert into public.profiles (id, role)
-select u.id, 'guest'::text
+select u.id, 'participant'::text
 from auth.users u
 where u.email in (
   'CHANGE_ME_CUSTOMER_A@example.com',
@@ -43,8 +43,8 @@ from auth.users t
 where t.email = 'CHANGE_ME_TEACHER@example.com'
   and not exists (select 1 from public.workshops w where w.slug = 'seed-pottery-101');
 
-insert into public.workshop_sessions (workshop_id, starts_at, location, max_participants, price_cents)
-select w.id, ts.starts_at, ts.loc, ts.max_p, ts.pc
+insert into public.workshop_sessions (workshop_id, starts_at, location, max_participants, price_cents, teacher_user_id, status)
+select w.id, ts.starts_at, ts.loc, ts.max_p, ts.pc, w.teacher_user_id, 'scheduled'::text
 from public.workshops w
 cross join lateral (
   values

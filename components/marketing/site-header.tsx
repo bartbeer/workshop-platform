@@ -11,8 +11,14 @@ export async function SiteHeader() {
     data: { user },
   } = await supabase.auth.getUser();
   const role = user ? await getProfileRole(user.id) : null;
-  const canTeach = role === "teacher" || role === "owner";
-  const dashboardHref = canTeach ? "/dashboard/workshops" : "/dashboard";
+  const dashboardHref =
+    role === "owner"
+      ? "/admin/workshops"
+      : role === "teacher"
+        ? "/dashboard/sessions"
+        : "/dashboard";
+  const dashboardLabel =
+    role === "owner" ? "Catalogus" : role === "teacher" ? "Mijn sessies" : "Overzicht";
 
   return (
     <nav className="border-outline-variant/10 fixed top-0 right-0 left-0 z-[60] border-b bg-white/95 backdrop-blur-md">
@@ -80,7 +86,7 @@ export async function SiteHeader() {
           {user ? (
             <>
               <Button variant="outline" size="sm" className="rounded-none font-label text-[10px] tracking-widest uppercase" asChild>
-                <Link href={dashboardHref}>{canTeach ? "Mijn workshops" : "Overzicht"}</Link>
+                <Link href={dashboardHref}>{dashboardLabel}</Link>
               </Button>
               <SignOutButton />
             </>
