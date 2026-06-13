@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CancelSessionButton } from "@/components/admin/cancel-session-button";
+import { WorkshopAttendanceSection } from "@/components/admin/workshop-attendance-section";
 import { Button } from "@/components/ui/button";
 import { WorkshopCreateForm } from "@/components/workshops/workshop-create-form";
 import { requireOwner } from "@/lib/auth/require-user";
@@ -61,6 +62,41 @@ export default async function AdminEditWorkshopPage({ params, searchParams }: Pr
 
   const teacherOptions = await fetchApprovedTeacherOptions();
   const sessions = sessionsData ?? [];
+  const sessionIds = sessions.map((s) => s.id);
+
+  let bookings: {
+    id: string;
+    workshop_session_id: string;
+    participant_count: number;
+    user_id: string;
+  }[] = [];
+  if (sessionIds.length) {
+    const { data: bookingData } = await supabase
+      .from("workshop_bookings")
+      .select("id, workshop_session_id, participant_count, user_id")
+      .in("workshop_session_id", sessionIds)
+      .eq("status", "confirmed");
+    bookings = bookingData ?? [];
+  }
+
+  const bookingIds = bookings.map((b) => b.id);
+  let attendanceRows: { booking_id: string; present_count: number }[] = [];
+  if (bookingIds.length) {
+    const { data: attendanceData } = await supabase
+      .from("booking_attendance")
+      .select("booking_id, present_count")
+      .in("booking_id", bookingIds);
+    attendanceRows = attendanceData ?? [];
+  }
+
+  const bookerIds = [...new Set(bookings.map((b) => b.user_id))];
+  type BookerLabelRow = { user_id: string; label: string; email: string };
+  const { data: bookerLabelsRaw } = bookerIds.length
+    ? await supabase.rpc("booker_labels_by_user_ids", { p_user_ids: bookerIds })
+    : { data: [] as BookerLabelRow[] };
+  const bookerLabels = (bookerLabelsRaw ?? []) as BookerLabelRow[];
+  const bookerByUserId = new Map(bookerLabels.map((b) => [b.user_id, b]));
+  const attendanceByBookingId = new Map(attendanceRows.map((a) => [a.booking_id, a.present_count]));
 
   const initialSessions =
     sessions.length > 0
@@ -95,6 +131,11 @@ export default async function AdminEditWorkshopPage({ params, searchParams }: Pr
         <p className="mb-6 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
           Sessie geannuleerd. Deelnemers zijn per e-mail op de hoogte gebracht. Betaalde terugbetalingen
           verwerk je handmatig in Stripe.
+        </p>
+      )}
+      {query.ok === "attendance_saved" && (
+        <p className="mb-6 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
+          Aanwezigheid opgeslagen.
         </p>
       )}
       {query.error === "already_cancelled" && (
@@ -147,6 +188,18 @@ export default async function AdminEditWorkshopPage({ params, searchParams }: Pr
           </ul>
         </section>
       ) : null}
+
+      <WorkshopAttendanceSection
+        sessions={sessions.map((s) => ({
+          id: s.id,
+          starts_at: s.starts_at,
+          location: s.location,
+        }))}
+        bookings={bookings}
+        attendanceByBookingId={attendanceByBookingId}
+        bookerByUserId={bookerByUserId}
+        redirectTo={`/admin/workshops/${workshop.id}/edit`}
+      />
 
       <div className="mt-10 flex gap-3">
         <Button variant="outline" asChild>
